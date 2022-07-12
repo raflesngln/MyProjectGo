@@ -8,17 +8,19 @@ import (
 	"log"
 	"net/http"
 	"os"
+
 	//"path/filepath"
 	"strconv"
 	_ "strconv"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v7"
 	"github.com/twinj/uuid"
 )
+
 var client *redis.Client
 
 func init() {
@@ -35,6 +37,7 @@ func init() {
 		panic(err)
 	}
 }
+
 //
 //
 //type Account struct {
@@ -148,14 +151,12 @@ func main() {
 	router.GET("/form_upload", Form_upload)
 	router.POST("/upload_file", UploadFile)
 
-
 	router.GET("/product/", ProductPage) // http://localhost:8000/product
 
-	router.GET("/user/:name/", UserDetail) // http://localhost:8000/user/rafles/?address=jakarta%20barat
-	router.GET("/user/", User)             // http://localhost:8000/user
-	router.POST("user", MyMiddlewarePerRoute(), insertUser)        // http://localhost:8000/user/rafles/?address=jakarta%20barat
-	router.POST("form_post", MyMiddlewarePerRoute(), form_post)        // multipart form data
-
+	router.GET("/user/:name/", UserDetail)                      // http://localhost:8000/user/rafles/?address=jakarta%20barat
+	router.GET("/user/", MyMiddlewarePerRoute(), User)          // http://localhost:8000/user
+	router.POST("user", MyMiddlewarePerRoute(), insertUser)     // http://localhost:8000/user/rafles/?address=jakarta%20barat
+	router.POST("form_post", MyMiddlewarePerRoute(), form_post) // multipart form data
 
 	/* ROUTER GROUP */
 	v1 := router.Group("/v1")
@@ -185,8 +186,8 @@ func User(c *gin.Context) {
 	name := c.Param("name")
 	password := c.Param("password")
 	c.JSON(200, gin.H{
-		"datas": val,
-		"name": name,
+		"datas":    val,
+		"name":     name,
 		"password": password,
 	})
 }
@@ -216,7 +217,7 @@ func form_post(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"status":  "posted",
 		"message": message,
-		"gambar":gambar.Filename,
+		"gambar":  gambar.Filename,
 	})
 }
 
@@ -226,8 +227,8 @@ func UserDetail(c *gin.Context) {
 	// Dengan Query String
 	address := c.Query("address")
 	c.JSON(200, gin.H{
-		"Nama": name,
-		"Alamat":  address,
+		"Nama":   name,
+		"Alamat": address,
 	})
 	// c.String(http.StatusOK, "Hello  %s Alamat %s", name, address)
 }
@@ -322,21 +323,19 @@ func encodeProduct(data []Product) []byte {
 	return dataJSON
 }
 
-
-
 /*======================== FOR GENERATE TOKEN ==================================*/
 type Account struct {
-	ID uint64            `json:"id"`
+	ID       uint64 `json:"id"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+
 //A sample user account get from DB
 var accounts = Account{
-	ID:             1,
+	ID:       1,
 	Username: "raflesngln",
 	Password: "12345",
 }
-
 
 func Login(c *gin.Context) {
 	var u Account
@@ -367,7 +366,7 @@ func Login(c *gin.Context) {
 
 type AccessDetails struct {
 	AccessUuid string
-	UserId   uint64
+	UserId     uint64
 }
 
 type TokenDetails struct {
@@ -379,7 +378,6 @@ type TokenDetails struct {
 	RtExpires    uint64
 }
 
-
 func CreateToken(userid uint64) (*TokenDetails, error) {
 	td := &TokenDetails{}
 	td.AtExpires = uint64(time.Now().Add(time.Minute * 15).Unix())
@@ -387,7 +385,6 @@ func CreateToken(userid uint64) (*TokenDetails, error) {
 
 	td.RtExpires = uint64(time.Now().Add(time.Hour * 24 * 7).Unix())
 	td.RefreshUuid = td.AccessUuid + "++" + strconv.Itoa(int(userid))
-
 
 	var err error
 	//Creating Access Token
@@ -416,7 +413,6 @@ func CreateToken(userid uint64) (*TokenDetails, error) {
 	return td, nil
 }
 
-
 func CreateAuth(userid uint64, td *TokenDetails) error {
 	at := time.Unix(int64(td.AtExpires), 0) //converting Unix to UTC(to Time object)
 	rt := time.Unix(int64(td.RtExpires), 0)
@@ -435,9 +431,8 @@ func CreateAuth(userid uint64, td *TokenDetails) error {
 
 type Todo struct {
 	UserID uint64 `json:"user_id"`
-	Title string `json:"title"`
+	Title  string `json:"title"`
 }
-
 
 func ExtractToken(r *http.Request) string {
 	bearToken := r.Header.Get("Authorization")
@@ -498,7 +493,6 @@ func ExtractTokenMetadata(r *http.Request) (*AccessDetails, error) {
 	return nil, err
 }
 
-
 func FetchAuth(authD *AccessDetails) (uint64, error) {
 	userid, err := client.Get(authD.AccessUuid).Result()
 	if err != nil {
@@ -535,14 +529,13 @@ func CreateTodo(c *gin.Context) {
 	c.JSON(http.StatusCreated, td)
 }
 
-func DeleteAuth(givenUuid string) (int64,error) {
+func DeleteAuth(givenUuid string) (int64, error) {
 	deleted, err := client.Del(givenUuid).Result()
 	if err != nil {
 		return 0, err
 	}
 	return deleted, nil
 }
-
 
 func Logout(c *gin.Context) {
 	metadata, err := ExtractTokenMetadata(c.Request)
@@ -557,7 +550,6 @@ func Logout(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, "Successfully logged out")
 }
-
 
 func Refresh(c *gin.Context) {
 	mapToken := map[string]string{}
@@ -608,7 +600,7 @@ func Refresh(c *gin.Context) {
 		}
 		//Create new pairs of refresh and access tokens
 		ts, createErr := CreateToken(userId)
-		if  createErr != nil {
+		if createErr != nil {
 			c.JSON(http.StatusForbidden, createErr.Error())
 			return
 		}
